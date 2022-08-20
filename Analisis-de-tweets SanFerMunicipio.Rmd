@@ -1,0 +1,440 @@
+---
+title: "Análisis de Tweets de la Municipalidad de San Fernando"
+author: "GICP Ciencia de Datos, Análisis de Redes y Gestión del Desarrollo Tecnológico "
+date: "Agosto 2022"
+output:
+  html_document:
+    df_print: paged
+    toc: yes
+    always_allow_html: true
+  html_notebook:
+    depth: 4
+    toc: yes
+    toc_float: yes
+  pdf_document:
+    toc: yes
+subtitle: Proyecto PIDAE-UBA. Centro de Transferencia de Conocimiento y Tecnología (CETCOT - UBA)
+---
+    
+<br>
+     
+## Presentación
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+
+
+# se borran todos los objetos de la memoria
+
+rm(list =ls())
+
+# se cargan librerias de trabajo
+library(rtweet)
+library("tidyverse")
+library(tm)
+library(ggwordcloud)
+library(proustr)
+library(syuzhet)
+library(SnowballC)
+library(knitr)
+library(kableExtra)
+library(tidytext)
+library(lubridate)
+library(highcharter)
+library(wordcloud)
+
+
+#Levantamos una versión de SDAL 
+
+sdal <- read.csv('sdal.csv', encoding = 'UTF-8')
+usuario <- "SanFerMunicipio"
+
+```
+
+La idea de este artículo es mostrar algunas tecnicas útiles para el análisis de tweets. En esta ocasión el objeto de estudio serán figuras políticas relevantes con la idea de explorar su comportamiento en Twitter explorando por un lado los números de sus actividades en la red y la repercusión de sus mensajes y, por el otro, las palabras utilizadas para conformar el mensaje que desean emitir. En este orden de ideas, la dinamica de trabajo será primero abordar el análisis cuantitativo de los números que obtienen los mensajes de estas figuras, para lo cual elaboraremos una función que levantará las bases según el usuario deseado y limpiará la misma. 
+Las bases de trabajo fueron conformadas mediante la descarga de tweets a través del paquete Rtweet [git](https://rtweet.info/). El análisis de sentimiento se determinó mediante el diccionario SDAL
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+#Función para levantar bases según usuario ingresado
+
+
+
+Levantarbases <- function(usuario){
+  Base <<- read.csv(paste0("Datasets/BaseTweets@",usuario,".csv")) #levanta la base
+  Base <<- Base %>% 
+  select(created_at, 
+         status_id, 
+         screen_name, 
+         text,
+         is_retweet,
+         source,
+         display_text_width,
+         hashtags,
+         reply_to_screen_name,
+         favorite_count, 
+         retweet_count,
+         reply_count,
+         ext_media_expanded_url) %>% # seleccionamos varibles relevantes
+  mutate(mes=as.numeric(month(Base$created_at))) %>% #creamos variable para graficar mes
+  mutate(hora=as.numeric(hour(Base$created_at))) %>%  #creamos variable para graficar hora
+  mutate(horaARG= case_when(hora== "0" ~ "21",
+                            hora== "1" ~ "22",
+                            hora== "2" ~ "23",
+                            hora== "3" ~ "0",
+                            hora== "4" ~ "1",
+                            hora== "5" ~ "2",
+                            hora== "6" ~ "3",
+                            hora== "7" ~ "4",
+                            hora== "8" ~ "5",
+                            hora== "9" ~ "6",
+                            hora== "10" ~ "7",
+                            hora== "11" ~ "8",
+                            hora== "12" ~ "9",
+                            hora== "13" ~ "10",
+                            hora== "14" ~ "11",
+                            hora== "15" ~ "12",
+                            hora== "16" ~ "13",
+                            hora== "17" ~ "14",
+                            hora== "18" ~ "15",
+                            hora== "19" ~ "16",
+                            hora== "20" ~ "17",
+                            hora== "21" ~ "18",
+                            hora== "22" ~ "19",
+                            hora== "23" ~ "20",)) %>% 
+  mutate(Fecha_corta=as.Date(created_at))
+}
+
+#getwd()
+
+Levantarbases(usuario)
+
+
+Desde <- min(Base$Fecha_corta)
+
+Hasta <- max(Base$Fecha_corta)
+
+cant <- nrow(Base)
+
+```
+
+# Descriptivos
+
+Con nuestra función corriendo es posible levantar las bases que previamente tenemos configuradas en nuestra carpeta de trabajo. Ahora analizaremos el dataset graficando algunos valores descriptivos.
+
+La Base del usuario `r usuario`  contiene un total de `r cant` de tweets publicados desde `r Desde` hasta `r Hasta`.
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+####Graficos por dia####
+
+# Base %>%
+# select(mes, Fecha_corta) %>%
+# filter(Fecha_corta > "2019-01-01") %>%
+# group_by(Fecha_corta) %>%
+# arrange(Fecha_corta) %>%
+# summarise(total = n()) %>%
+# ggplot(aes(x=Fecha_corta,y=total))+
+# geom_line()+
+# ggtitle("Cantidad de tweets según mes")+
+#     labs(title = "Número de tweets publicados", x = "fecha de publicación",
+#        y = "número de tweets") +
+# theme_bw() +
+# theme(axis.text.x = element_text(angle = 90, size = 10),
+#         legend.position = "bottom")
+
+
+#VERSION HIGHCHART
+options(highcharter.theme = hc_theme_ggplot2())
+Tabla_1 <- Base %>% 
+  select(mes, Fecha_corta) %>%
+  filter(Fecha_corta > "2019-01-01") %>% 
+  group_by(mes) %>%
+  arrange(mes) %>%
+  summarise(total = n()) 
+
+
+
+Grafico1 <-  highchart() %>% 
+  hc_title(text="Número de tweets según mes")%>%
+  hc_chart(type="line") %>%
+  hc_xAxis(categories = Tabla_1$mes) %>%
+  hc_add_series(Tabla_1$total, name="Cantidad de Tweets") 
+
+Grafico1
+
+```
+
+
+Veamos ahora cual es la frecuencia de las interacciones según la hora del día
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#VERSION HIGHCHART
+options(highcharter.theme = hc_theme_ggplot2())
+Tabla_2 <- Base %>% 
+  select(hora, Fecha_corta) %>%
+  filter(Fecha_corta > "2019-01-01") %>% 
+  group_by(hora) %>%
+  arrange(hora) %>%
+  summarise(total = n()) 
+
+
+
+Grafico2 <-  highchart() %>% 
+  hc_title(text="Número de tweets según hora")%>%
+  hc_chart(type="line") %>%
+  hc_colors(color = "#B71C1C") %>% 
+  hc_xAxis(categories = Tabla_2$hora) %>%
+  hc_add_series(Tabla_2$total, name="Cantidad de Tweets") 
+
+Grafico2
+```
+
+Ahora agreguemos al análisis la desagregación según dispositivo
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+#VERSION HIGHCHART
+options(highcharter.theme = hc_theme_ggplot2())
+Tabla_3 <- Base %>% 
+  select(source) %>%
+  group_by(source) %>%
+  summarise(total = n()) %>% 
+  mutate(prop = (total/sum(total)*100)) %>% 
+  # arrange(-total, -source) %>% 
+  glimpse()
+
+# ggplot(Tabla_3, aes(x = mes,y = total, fill = mes)) + 
+#     geom_bar(stat = "identity") + 
+#     facet_grid(. ~ source) + 
+#     ylab("Total de mensajes") + 
+#     scale_fill_manual("Dispositivo", values = alpha(c("coral", "lightblue"), 1)) 
+
+
+Grafico3 <-  hchart(Tabla_3, "treemap", hcaes(x = source, value = total, color = prop))
+
+Grafico3
+```
+
+Tambien podemos ver los mensajes mas retuiteados y faveados
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+options(scipen=999)
+
+MensajeMasRetuiteado <- Base %>%
+  filter(is_retweet == "FALSE") %>% 
+  select(status_id, text, retweet_count,Fecha_corta,ext_media_expanded_url) %>% 
+  arrange(desc(retweet_count)) %>% 
+  head(1)
+
+MensajeMasFaveado <- Base %>%
+  filter(is_retweet == "FALSE") %>% 
+  select(status_id, text, favorite_count,Fecha_corta,ext_media_expanded_url) %>% 
+  arrange(desc(favorite_count)) %>% 
+  head(1)
+
+kable(MensajeMasFaveado, align = "r") %>%
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "center") 
+
+kable(MensajeMasRetuiteado, align = "r") %>%
+  kable_styling(bootstrap_options = "striped", full_width = F, position = "center")
+
+```
+
+
+
+# Nube de palabras
+
+Una buena manera de representar las palabras utilizadas consiste en conformar las nubes de palabras o bag of words. Basicamente se trata de visualizar cuales son los términos de mayor uso mostrando su peso en relación a los otros.
+
+Esta es la nube de palabras del año en Twitter de `r usuario`
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+palabras_inutiles <- c('rt','u' ,'t.co', 'https', 'tan', 'Alberto', 'Fernandez', 'alberto', 'fernandez', 'fernández', 'n', 'fe0f', 's', 'm', 'gt')
+
+Base1 <- as.data.frame(Base)
+Base1$text <- as.character(Base1$text)
+
+
+BaseTokens <- Base1 %>%
+  filter(!(is_retweet=="TRUE")) %>% 
+  unnest_tokens(palabra, text) %>%
+    count(palabra, sort=TRUE) %>%
+    filter(!palabra%in%stopwords('es')) %>%
+    filter(!palabra%in%palabras_inutiles) %>%
+    filter(str_detect(palabra, "^[a-zA-z]|^#|^@"))%>%
+    arrange(desc(n)) %>% 
+    rename('word'=palabra)
+
+wordcloud(BaseTokens$word,BaseTokens$n,scale=c(3,.1),random.order=FALSE,random.color=TRUE,rot.per=0.4,colors=brewer.pal(7,"Dark2"))
+
+
+```
+
+
+Palabras positivas
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+BaseTokensSDAL <- left_join(BaseTokens, sdal)
+
+TweetsPos <- BaseTokensSDAL %>% 
+  filter(!is.na(media_agrado)) %>%
+  arrange(desc(media_agrado), desc(n))
+ 
+TokenPos <- TweetsPos %>% 
+  head(100)
+
+
+wordcloud(TokenPos$word,TokenPos$n,scale=c(4,.1),random.order=FALSE,random.color=TRUE,rot.per=0.4,colors=brewer.pal(7,"Dark2"))
+```
+
+
+
+Palabras negativas
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+BaseTokensSDAL <- left_join(BaseTokens, sdal)
+  TweetsNeg <- BaseTokensSDAL %>% 
+  filter(!is.na(media_agrado)) %>%
+  arrange(media_agrado, desc(n))
+  
+  
+TokenNeg <- TweetsNeg %>% 
+head(100)
+
+
+wordcloud(TokenNeg$word,TokenNeg$n,scale=c(4,.1),random.order=FALSE,random.color=TRUE,rot.per=0.4,colors=brewer.pal(7,"Dark2"))
+```
+
+
+
+
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+TablaTP <- TokenPos%>%
+  select(word,n) %>% 
+  arrange(desc(n)) %>% 
+  head(20)
+
+grafico4 <-  highchart() %>% 
+  hc_title(text="20 palabras positivas con mayor frecuencia")%>%
+  hc_chart(type="bar") %>%
+  hc_colors(color = "darkgreen") %>% 
+  hc_xAxis(categories = TablaTP$word) %>%
+  hc_add_series(TablaTP$n, name="Palabras")
+
+
+grafico4
+```
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+TablaTN <- TokenNeg%>%
+  select(word,n) %>% 
+  arrange(desc(n)) %>% 
+  head(20)
+
+grafico5 <-  highchart() %>% 
+  hc_title(text="20 palabras Negativas con mayor frecuencia")%>%
+  hc_chart(type="bar") %>%
+  hc_colors(color = "darkred") %>% 
+  hc_xAxis(categories = TablaTN$word) %>%
+  hc_add_series(TablaTP$n, name="Palabras")
+
+
+grafico5
+
+
+
+```
+
+
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+options(scipen=999)
+
+# MensajeMasRetuiteado <- Base %>% 
+#   select(status_id, text, retweet_count) %>% 
+#   arrange(desc(retweet_count)) %>% 
+#   head(1)
+# 
+# MensajeMasFaveado <- Base %>% 
+#   select(status_id, text, favorite_count) %>% 
+#   arrange(desc(favorite_count)) %>% 
+#   head(1)
+
+fav <- str_sub(MensajeMasFaveado$ext_media_expanded_url,44,61)
+RT <- str_sub(MensajeMasRetuiteado$ext_media_expanded_url,44,61)
+
+fav2 <- MensajeMasFaveado$status_id
+RT2 <- MensajeMasRetuiteado$status_id
+
+```
+## Captura de tweet con mayor cantidad de favs:
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+ #install.packages("devtools")
+ #devtools::install_github("gadenbuie/tweetrmd")
+ #devtools::install_github('rstudio/webshot2')
+library(tweetrmd)
+
+
+tweet_screenshot(tweet_url(usuario, fav))
+
+
+
+```
+
+
+## Captura de tweet con mayor cantidad de rt:
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+# install.packages("devtools")
+# devtools::install_github("gadenbuie/tweetrmd")
+# devtools::install_github('rstudio/webshot2')
+library(tweetrmd)
+
+
+tweet_screenshot(tweet_url(usuario, RT))
+
+
+
+```
+<br>
+
+Finalmente agregamos un cuadro resumen con la cantidad de palabras utilizadas vinculadas al medio ambiente
+
+
+<br>
+
+```{r echo=FALSE, message=FALSE, warning=FALSE}
+
+Tabla_9 <- BaseTokens %>% 
+  filter(word %in% c('ambiente','ambiental','residuos','basura', 'reciclar','reciclaje'))
+  #spread(key = word,value = n)
+
+kable(Tabla_9,align = "l",digits = 3,col.names = c("Palabra","Cantidad"))%>% 
+        column_spec(1, bold = TRUE, color = "darkgreen") %>%
+  row_spec(0,background = "darkgreen", color = "white") %>% 
+  kable_minimal()
+
+```
+
+
+
+
+
+
+
