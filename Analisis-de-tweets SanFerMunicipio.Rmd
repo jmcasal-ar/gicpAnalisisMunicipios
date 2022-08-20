@@ -13,7 +13,7 @@ output:
     toc_float: yes
   pdf_document:
     toc: yes
-subtitle: Proyecto PIDAE-UBA. Centro de Transferencia de Conocimiento y Tecnología (CETCOT - UBA)
+subtitle: Proyecto PIDAE-UBA "Separacion de residuos, desarrollo sustentable y políticas". Centro de Transferencia de Conocimiento y Tecnología (CETCOT - UBA)
 ---
     
 <br>
@@ -50,9 +50,10 @@ usuario <- "SanFerMunicipio"
 
 ```
 
-La idea de este artículo es mostrar algunas tecnicas útiles para el análisis de tweets. En esta ocasión el objeto de estudio serán figuras políticas relevantes con la idea de explorar su comportamiento en Twitter explorando por un lado los números de sus actividades en la red y la repercusión de sus mensajes y, por el otro, las palabras utilizadas para conformar el mensaje que desean emitir. En este orden de ideas, la dinamica de trabajo será primero abordar el análisis cuantitativo de los números que obtienen los mensajes de estas figuras, para lo cual elaboraremos una función que levantará las bases según el usuario deseado y limpiará la misma. 
-Las bases de trabajo fueron conformadas mediante la descarga de tweets a través del paquete Rtweet [git](https://rtweet.info/). El análisis de sentimiento se determinó mediante el diccionario SDAL
+La idea de esta serie de publicaciones es mostrar algunas tecnicas útiles para el análisis de tweets. En esta ocasión el objeto de estudio serán instituciones políticas relevantes con la idea de explorar su comportamiento en Twitter explorando por un lado los números de sus actividades en la red y la repercusión de sus mensajes y, por el otro, las palabras utilizadas para conformar el mensaje que desean emitir. En este orden de ideas, la dinamica de trabajo será primero abordar el análisis cuantitativo de los números que obtienen los mensajes de estas figuras, para lo cual elaboraremos una función que levantará las bases según el usuario deseado y limpiará la misma. 
+Las bases de trabajo fueron conformadas mediante la descarga de tweets a través del paquete Rtweet [git](https://rtweet.info/). El análisis de sentimiento se determinó mediante el diccionario SDAL.
 
+El trabajo se enmarca dentro del Proyecto de Investigación y Desarrollo en Áreas Estratégicas (PIDAE) "Separacion de residuos, desarrollo sustentable y políticas" en el cual ha investigado la comunicación en redes sociales de diferentes instituciones y figuras políticas, especialmente en temas referidos al desarrollo sustentable. La presente publicación es un aporte al proyecto por parte del Grupo de Investigación en Ciencia Política "Ciencia de Datos, Análisis de Redes y Gestión del Desarrollo Tecnológico" en el cual los investigadores en formación han podido aplicar las herramientas de análisis adquiridas en las capacitaciones del GICP, brindada a través de la plataforma La UNX, desarrollada por CETCOT - ACDES. 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 

@@ -1,0 +1,11 @@
+name: Publish Document
+title:
+username:
+account: rpubs
+server: rpubs.com
+hostUrl: rpubs.com
+appId: https://api.rpubs.com/api/v1/document/933844/4aa50c6820614822a7105c3dbf187bf3
+bundleId: https://api.rpubs.com/api/v1/document/933844/4aa50c6820614822a7105c3dbf187bf3
+url: http://rpubs.com/CetcotUBA/933844
+when: 1661030810.40744
+lastSyncTime: 1661030810.40746
